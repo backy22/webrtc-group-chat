@@ -2,19 +2,22 @@ import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
 import styled from "styled-components";
+import RecordRTC from "recordrtc";
+import download from "downloadjs";
 
 const Container = styled.div`
     padding: 20px;
-    display: flex;
-    height: 100vh;
-    width: 90%;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, 300px);
+    grid-auto-rows: 300px;
     margin: auto;
-    flex-wrap: wrap;
+    gap: 10px;
 `;
 
 const StyledVideo = styled.video`
-    height: 40%;
-    width: 50%;
+    height: 100%;
+    width: 100%;
+    object-fit: cover;
 `;
 
 const Video = (props) => {
@@ -33,12 +36,15 @@ const Video = (props) => {
 
 
 const videoConstraints = {
-    height: window.innerHeight / 2,
-    width: window.innerWidth / 2
+    height: window.innerHeight,
+    width: window.innerWidth
 };
 
 const Room = (props) => {
     const [peers, setPeers] = useState([]);
+    const [isMute, setMute] = useState(false);
+    const [isCameraOff, setCameraOff] = useState(false);
+    const [recorder, setRecorder] = useState();
     const socketRef = useRef();
     const userVideo = useRef();
     const peersRef = useRef([]);
@@ -49,6 +55,7 @@ const Room = (props) => {
         navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true }).then(stream => {
             userVideo.current.srcObject = stream;
             socketRef.current.emit("join room", roomID);
+
             socketRef.current.on("all users", users => {
                 const peers = [];
                 users.forEach(userID => {
@@ -76,7 +83,12 @@ const Room = (props) => {
                 const item = peersRef.current.find(p => p.peerID === payload.id);
                 item.peer.signal(payload.signal);
             });
+
+            socketRef.current.on("user disconnected", payload => {
+                console.log('disconnected', payload, peersRef, peers)
+            });
         })
+
     }, []);
 
     function createPeer(userToSignal, callerID, stream) {
@@ -109,15 +121,48 @@ const Room = (props) => {
         return peer;
     }
 
+    function muteToggle() {
+        console.log(isMute)
+        userVideo.current.srcObject.getAudioTracks()[0].enabled = !isMute;
+        setMute(!isMute)
+    }
+
+    function cameraToggle() {
+        userVideo.current.srcObject.getVideoTracks()[0].enabled = !isCameraOff;
+        setCameraOff(!isCameraOff)
+    }
+
+    function startRecording() {
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }).then(stream => {
+            let recorder = RecordRTC(stream, { type: 'video/webm' })
+            recorder.startRecording();
+            setRecorder(recorder)
+        });
+    }
+
+    function stopRecording() {
+        recorder.stopRecording(()=>{
+            let blob = recorder.getBlob();
+            download(blob, `${roomID}.mp4`, 'video/webm')
+        })
+    }
+
     return (
-        <Container>
-            <StyledVideo muted ref={userVideo} autoPlay playsInline />
-            {peers.map((peer, index) => {
-                return (
-                    <Video key={index} peer={peer} />
-                );
-            })}
-        </Container>
+        <div>
+            <Container>
+                <StyledVideo muted ref={userVideo} autoPlay playsInline />
+
+                {peers.map((peer, index) => {
+                    return (
+                        <Video key={index} peer={peer} />
+                    );
+                })}
+            </Container>
+            <button onClick={muteToggle}>mute</button>
+            <button onClick={cameraToggle}>camera off</button>
+            <button onClick={startRecording}>Start Recording</button>
+            <button onClick={stopRecording}>Stop Recording</button>
+        </div>
     );
 };
 

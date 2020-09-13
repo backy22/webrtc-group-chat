@@ -5,11 +5,16 @@
   "license": "MIT",
   "dependencies": {
     "dotenv": "^8.2.0",
+    "downloadjs": "^1.4.7",
     "express": "^4.17.1",
+    "recordrtc": "^5.6.1",
     "socket.io": "^2.3.0"
   },
   "scripts": {
     "start": "PROD=true node server.js",
     "postinstall": "cd ./client && yarn"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.4"
   }
 }
