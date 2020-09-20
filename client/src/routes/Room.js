@@ -20,6 +20,23 @@ const StyledVideo = styled.video`
     object-fit: cover;
 `;
 
+const MessageBox = styled.textarea`
+    width: 100%;
+    height: 30%;
+`;
+
+const Button = styled.div`
+    width: 50%;
+    border: 1px solid black;
+    margin-top: 15px;
+    height: 5%;
+    border-radius: 5px;
+    cursor: pointer;
+    background-color: black;
+    color: white;
+    font-size: 18px;
+`;
+
 const Video = (props) => {
     const ref = useRef();
 
@@ -30,7 +47,9 @@ const Video = (props) => {
     }, []);
 
     return (
-        <StyledVideo playsInline autoPlay ref={ref} />
+        <div>
+            <StyledVideo playsInline autoPlay ref={ref} />
+        </div>
     );
 }
 
@@ -42,9 +61,13 @@ const videoConstraints = {
 
 const Room = (props) => {
     const [peers, setPeers] = useState([]);
+    const [myName, setMyName] = useState("");
+    const [names, setNames] = useState([]);
     const [isMute, setMute] = useState(false);
     const [isCameraOff, setCameraOff] = useState(false);
     const [recorder, setRecorder] = useState();
+    const [text, setText] = useState("");
+    const [messages, setMessages] = useState([]);
     const socketRef = useRef();
     const userVideo = useRef();
     const peersRef = useRef([]);
@@ -66,10 +89,12 @@ const Room = (props) => {
                     })
                     peers.push(peer);
                 })
+                console.log('peers--', peers);
                 setPeers(peers);
             })
 
             socketRef.current.on("user joined", payload => {
+                console.log('user joined', payload)
                 const peer = addPeer(payload.signal, payload.callerID, stream);
                 peersRef.current.push({
                     peerID: payload.callerID,
@@ -80,16 +105,31 @@ const Room = (props) => {
             });
 
             socketRef.current.on("receiving returned signal", payload => {
+                console.log('receiving returned signal', payload)
                 const item = peersRef.current.find(p => p.peerID === payload.id);
                 item.peer.signal(payload.signal);
             });
 
             socketRef.current.on("user disconnected", payload => {
-                console.log('disconnected', payload, peersRef, peers)
+                console.log('disconnected', payload, peersRef.current, peers)
+                payload.forEach(userID => {
+                    peersRef.current = peersRef.current.filter(p => p.peerID !== userID);
+                })
+            });
+
+            socketRef.current.on('receiving msg', payload => {
+                console.log('receiving msg', payload)
+                setMessages(messages => [...messages, {senderID: payload.senderID, text: payload.text}])
+            });
+
+            socketRef.current.on('receiving name', payload => {
+                console.log('receiving name', payload)
+                setNames(names => [...names, {peerID: payload.senderID, name: payload.name}])
             });
         })
 
     }, []);
+
 
     function createPeer(userToSignal, callerID, stream) {
         const peer = new Peer({
@@ -99,6 +139,7 @@ const Room = (props) => {
         });
 
         peer.on("signal", signal => {
+            console.log('sending signal', signal)
             socketRef.current.emit("sending signal", { userToSignal, callerID, signal })
         })
 
@@ -113,6 +154,7 @@ const Room = (props) => {
         })
 
         peer.on("signal", signal => {
+            console.log('returning signal', signal)
             socketRef.current.emit("returning signal", { signal, callerID })
         })
 
@@ -122,7 +164,6 @@ const Room = (props) => {
     }
 
     function muteToggle() {
-        console.log(isMute)
         userVideo.current.srcObject.getAudioTracks()[0].enabled = !isMute;
         setMute(!isMute)
     }
@@ -147,11 +188,32 @@ const Room = (props) => {
         })
     }
 
+    function hangup(){
+        peers.forEach((peer) => peer.destroy());
+    }
+
+    function onKeyUpMyName(e) {
+        if (e.charCode === 13) {
+            socketRef.current.emit("changing myname", { senderID: socketRef.current.id, name: e.target.value })
+            setMyName(e.target.value);
+        }
+    }
+
+    function handleChange(e) {
+        setText(e.target.value);
+    }
+
+    function sendMessage() {
+        socketRef.current.emit("sending msg", { senderID: socketRef.current.id, text });
+    }
+
     return (
         <div>
             <Container>
-                <StyledVideo muted ref={userVideo} autoPlay playsInline />
-
+                <div>
+                    <StyledVideo muted ref={userVideo} autoPlay playsInline />
+                    <input onKeyPress={onKeyUpMyName}></input>
+                </div>
                 {peers.map((peer, index) => {
                     return (
                         <Video key={index} peer={peer} />
@@ -162,6 +224,20 @@ const Room = (props) => {
             <button onClick={cameraToggle}>camera off</button>
             <button onClick={startRecording}>Start Recording</button>
             <button onClick={stopRecording}>Stop Recording</button>
+            <button onClick={hangup}>Hang up</button>
+
+            <div>
+                {messages.map((message) => {
+                    return (
+                        <div>
+                            <div>{message.senderID}</div>
+                            <div>{message.text}</div>
+                        </div>
+                    )
+                })}
+                <MessageBox value={text} onChange={handleChange} />
+                <Button onClick={sendMessage}>Send..</Button>
+            </div>
         </div>
     );
 };

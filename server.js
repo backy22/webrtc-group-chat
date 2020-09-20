@@ -36,6 +36,16 @@ io.on('connection', socket => {
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
     });
 
+    socket.on("sending msg", payload => {
+        console.log('sending msg', payload, socket.id);
+        io.emit('receiving msg', { senderID: payload.senderID, text: payload.text });
+    });
+
+    socket.on("changing myname", payload => {
+        console.log('changing myname', payload);
+        io.emit('receiving name', { senderID: payload.senderID, name: payload.name });
+    });
+
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
         let userIDs = users[roomID];
