@@ -41,8 +41,8 @@ io.on('connection', socket => {
         io.emit('receiving msg', { senderID: payload.senderID, text: payload.text });
     });
 
-    socket.on("changing myname", payload => {
-        console.log('changing myname', payload);
+    socket.on("set myname", payload => {
+        console.log('set myname', payload);
         io.emit('receiving name', { senderID: payload.senderID, name: payload.name });
     });
 
