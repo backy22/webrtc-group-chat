@@ -48,11 +48,12 @@ io.on('connection', socket => {
 
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
-        let userIDs = users[roomID];
-        if (userIDs) {
-            disconnectedIDs = userIDs.filter(id => id == socket.id);
-            io.emit('user disconnected', disconnectedIDs)
+        let room = users[roomID];
+        if (room) {
+            room = room.filter(id => id !== socket.id);
+            users[roomID] = room;
         }
+        socket.broadcast.emit('user left', socket.id);
 
     });
 

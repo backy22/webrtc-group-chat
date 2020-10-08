@@ -72,11 +72,11 @@ const MessageBox = styled.textarea`
 
 const Video = (props) => {
     const ref = useRef();
-    const name = props.names.find(name => name.peerID == props.peerRef.peerID)
+    const name = props.names.find(name => name.peerID == props.peer.peerID)
     const peerName = name ? name.name : 'anonymous';
 
     useEffect(() => {
-        props.peerRef.peer.on("stream", stream => {
+        props.peer.peer.on("stream", stream => {
             ref.current.srcObject = stream;
         })
     }, []);
@@ -136,7 +136,10 @@ const Room = (props) => {
                         peerID: userID,
                         peer,
                     })
-                    peers.push(peer);
+                    peers.push({
+                        peerID: userID,
+                        peer
+                    });
                 })
                 console.log('peers--', peers);
                 setPeers(peers);
@@ -150,7 +153,12 @@ const Room = (props) => {
                     peer,
                 })
 
-                setPeers(users => [...users, peer]);
+                const peerObj = {
+                    peer,
+                    peerID: payload.callerID
+                }
+
+                setPeers(users => [...users, peerObj]);
             });
 
             socketRef.current.on("receiving returned signal", payload => {
@@ -159,12 +167,15 @@ const Room = (props) => {
                 item.peer.signal(payload.signal);
             });
 
-            socketRef.current.on("user disconnected", payload => {
-                console.log('disconnected', payload, peersRef.current, peers)
-                payload.forEach(userID => {
-                    peersRef.current = peersRef.current.filter(p => p.peerID !== userID);
-                })
-            });
+            socketRef.current.on("user left", id => {
+                const peerObj = peersRef.current.find(p => p.peerID === id);
+                if (peerObj) {
+                    peerObj.peer.destroy();
+                }
+                const peers = peersRef.current.filter(p => p.peerID !== id);
+                peersRef.current = peers;
+                setPeers(peers);
+            })
 
             socketRef.current.on('receiving msg', payload => {
                 console.log('receiving msg', payload)
@@ -303,8 +314,8 @@ const Room = (props) => {
                     <StyledVideo muted ref={userVideo} autoPlay playsInline />
                     <div>{myName}</div>
                 </div>
-                {peersRef.current.map((peerRef, index) => {
-                    return <Video key={index} peerRef={peerRef} names={names} />
+                {peers.map((peer) => {
+                    return <Video key={peer.peerID} peer={peer} names={names} />
                 })}
                 <Controls>
                     <MicControl isMute={isMute} />
