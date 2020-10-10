@@ -5,6 +5,7 @@ import styled from "styled-components";
 import RecordRTC from "recordrtc";
 import download from "downloadjs";
 import {Send, Mic, MicOff, Videocam, VideocamOff, CallEnd, FiberManualRecord, Stop} from '@styled-icons/material/';
+import Message from "./Message";
 
 const Container = styled.div`
     display: flex;
@@ -34,7 +35,7 @@ const VideoContainer = styled.div`
     display: grid;
     grid-template-columns: repeat(auto-fill, 300px);
     grid-auto-rows: 300px;
-    margin: auto;
+    margin: 0;
     gap: 10px;
     width: 70%;
 `;
@@ -59,9 +60,17 @@ const MessageContainer = styled.div`
     width: 30%;
 `;
 
+const MessagesContainer = styled.div`
+    overflow-y: scroll;
+    height: calc(100vh - 60px);
+`;
+
 const SendBox = styled.div`
     display: flex;
     align-items: center;
+    position: absolute;
+    bottom: 5px;
+    width: 28%;
 `;
 
 const MessageBox = styled.textarea`
@@ -94,18 +103,6 @@ const videoConstraints = {
     width: window.innerWidth
 };
 
-const Message = (props) => {
-    const name = props.names.find(name => name.peerID == props.message.senderID)
-    const peerName = name ? name.name : 'anonymous';
-
-    return (
-    <div>
-        <div>{peerName}</div>
-        <div>{props.message.text}</div>
-    </div>
-    )
-}
-
 const Room = (props) => {
     const [peers, setPeers] = useState([]);
     const [myName, setMyName] = useState("");
@@ -124,6 +121,7 @@ const Room = (props) => {
 
     useEffect(() => {
         socketRef.current = io.connect("/");
+
         navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true }).then(stream => {
             userVideo.current.srcObject = stream;
             socketRef.current.emit("join room", roomID);
@@ -275,7 +273,7 @@ const Room = (props) => {
     } 
 
     function hangup(){
-        peers.forEach((peer) => peer.destroy());
+        peers.forEach((peer) => peer.peer.destroy());
     }
 
     function onKeyUpMyName(e) {
@@ -304,6 +302,7 @@ const Room = (props) => {
 
     function sendMessage() {
         socketRef.current.emit("sending msg", { senderID: socketRef.current.id, text });
+        setText('');
     }
 
     return (
@@ -325,9 +324,12 @@ const Room = (props) => {
                 </Controls>
             </VideoContainer>
             <MessageContainer>
-                {messages.map((message) => {
-                    return  <Message message={message} names={names} />
-                })}
+                <MessagesContainer>
+                    {messages.map((message) => {
+                        var myMsg = message.senderID === socketRef.current.id ? true : false
+                        return  <Message message={message} names={names} myMsg={myMsg}/>
+                    })}
+                </MessagesContainer>
                 <SendBox>
                     <MessageBox value={text} onChange={handleChange} />
                     <Send size="24" onClick={sendMessage}/>
