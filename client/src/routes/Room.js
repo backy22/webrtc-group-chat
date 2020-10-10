@@ -17,18 +17,18 @@ const Popup = styled.div`
     background: rgba(0,0,0,0.3);
     position: absolute;
     display: ${props => props.displayPopup};
+    .popup-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 5;
+        width: 300px;
+        background: white;
+        padding: 10px;
+    }
 `;
 
-const PopupContent = styled.div`
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 5;
-    width: 300px;
-    background: white;
-    padding: 10px;
-`;
 
 const VideoContainer = styled.div`
     padding: 20px;
@@ -58,19 +58,18 @@ const Controls = styled.div`
 const MessageContainer = styled.div`
     padding: 20px;
     width: 30%;
-`;
-
-const MessagesContainer = styled.div`
-    overflow-y: scroll;
-    height: calc(100vh - 60px);
-`;
-
-const SendBox = styled.div`
-    display: flex;
-    align-items: center;
-    position: absolute;
-    bottom: 5px;
-    width: 28%;
+    .messages {
+        overflow-y: scroll;
+        height: calc(100vh - 60px);
+    }
+    .sendBox {
+        display: flex;
+        align-items: center;
+        position: absolute;
+        bottom: 5px;
+        width: 28%;
+    }
+    
 `;
 
 const MessageBox = styled.textarea`
@@ -288,10 +287,10 @@ const Room = (props) => {
         let displayPopup = props.showPopup ? 'block' : 'none'
             return (
                 <Popup displayPopup={displayPopup}>
-                    <PopupContent>
+                    <div className="popup-content">
                         <h4>Put your name</h4>
                         <input onKeyPress={onKeyUpMyName}></input>
-                    </PopupContent>
+                    </div>
                 </Popup>
             )
     }
@@ -324,16 +323,16 @@ const Room = (props) => {
                 </Controls>
             </VideoContainer>
             <MessageContainer>
-                <MessagesContainer>
+                <div className="messages">
                     {messages.map((message) => {
                         var myMsg = message.senderID === socketRef.current.id ? true : false
                         return  <Message message={message} names={names} myMsg={myMsg}/>
                     })}
-                </MessagesContainer>
-                <SendBox>
+                </div>
+                <div className="sendBox">
                     <MessageBox value={text} onChange={handleChange} />
                     <Send size="24" onClick={sendMessage}/>
-                </SendBox>
+                </div>
             </MessageContainer>
         </Container>
     );
