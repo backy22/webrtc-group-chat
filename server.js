@@ -6,9 +6,9 @@ const server = http.createServer(app);
 const socket = require("socket.io");
 const io = socket(server);
 
-const users = {};
-
-const socketToRoom = {};
+let users = {};
+let socketToRoom = {};
+let socketToName = [];
 
 io.on('connection', socket => {
     socket.on("join room", roomID => {
@@ -42,8 +42,19 @@ io.on('connection', socket => {
     });
 
     socket.on("set myname", payload => {
-        console.log('set myname', payload);
-        io.emit('receiving name', { senderID: payload.senderID, name: payload.name });
+        socketToName.push({peerID: payload.senderID, name: payload.name})
+        io.emit('receiving names', socketToName);
+    });
+
+    socket.on('hangup', socketId => {
+        console.log('hangup')
+        const roomID = socketToRoom[socketId];
+        let room = users[roomID];
+        if (room) {
+            room = room.filter(id => id !== socketId);
+            users[roomID] = room;
+        }
+        socket.broadcast.emit('user left', socketId);
     });
 
     socket.on('disconnect', () => {
@@ -54,7 +65,6 @@ io.on('connection', socket => {
             users[roomID] = room;
         }
         socket.broadcast.emit('user left', socket.id);
-
     });
 
 });

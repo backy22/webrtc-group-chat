@@ -179,9 +179,9 @@ const Room = (props) => {
                 setMessages(messages => [...messages, {senderID: payload.senderID, text: payload.text}])
             });
 
-            socketRef.current.on('receiving name', payload => {
-                console.log('receiving name', payload)
-                setNames(names => [...names, {peerID: payload.senderID, name: payload.name}])
+            socketRef.current.on('receiving names', payload => {
+                console.log('receiving names', payload)
+                setNames(payload)
             });
         })
 
@@ -272,7 +272,8 @@ const Room = (props) => {
     } 
 
     function hangup(){
-        peers.forEach((peer) => peer.peer.destroy());
+        socketRef.current.emit("hangup", socketRef.current.id);
+        props.history.push('/');
     }
 
     function onKeyUpMyName(e) {
