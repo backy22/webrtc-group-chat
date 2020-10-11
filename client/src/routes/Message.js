@@ -35,7 +35,7 @@ const PeerMsg = styled.div`
 `
 
 const Message = (props) => {
-    const name = props.names.find(name => name.peerID == props.message.senderID)
+    const name = props.names.find(name => name.peerID === props.message.senderID)
     const peerName = name ? name.name : 'anonymous';
     console.log('props.myMsg', props.myMsg);
 

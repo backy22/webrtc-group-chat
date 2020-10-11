@@ -13,6 +13,7 @@ let socketToName = [];
 
 io.on('connection', socket => {
     socket.on("join room", roomID => {
+        console.log('join room')
         if (users[roomID]) {
             const length = users[roomID].length;
             if (length > 4) {
@@ -30,10 +31,12 @@ io.on('connection', socket => {
     });
 
     socket.on("sending signal", payload => {
+        console.log('sending signal')
         io.to(payload.userToSignal).emit('user joined', { signal: payload.signal, callerID: payload.callerID });
     });
 
     socket.on("returning signal", payload => {
+        console.log('returning signal')
         io.to(payload.callerID).emit('receiving returned signal', { signal: payload.signal, id: socket.id });
     });
 

@@ -80,7 +80,7 @@ const MessageBox = styled.textarea`
 
 const Video = (props) => {
     const ref = useRef();
-    const name = props.names.find(name => name.peerID == props.peer.peerID)
+    const name = props.names.find(name => name.peerID === props.peer.peerID)
     const peerName = name ? name.name : 'anonymous';
 
     useEffect(() => {
@@ -126,6 +126,7 @@ const Room = (props) => {
             socketRef.current.emit("join room", roomID);
 
             socketRef.current.on("all users", users => {
+                console.log('all users')
                 const peers = [];
                 users.forEach(userID => {
                     const peer = createPeer(userID, socketRef.current.id, stream);
@@ -138,24 +139,28 @@ const Room = (props) => {
                         peer
                     });
                 })
-                console.log('peers--', peers);
+                console.log('peers', peers);
                 setPeers(peers);
             })
 
             socketRef.current.on("user joined", payload => {
                 console.log('user joined', payload)
+                const samePeer = peersRef.current.find(p => p.peerID === payload.callerID)
+
+                if (!samePeer){
                 const peer = addPeer(payload.signal, payload.callerID, stream);
-                peersRef.current.push({
-                    peerID: payload.callerID,
-                    peer,
-                })
+                    peersRef.current.push({
+                        peerID: payload.callerID,
+                        peer,
+                    })
 
-                const peerObj = {
-                    peer,
-                    peerID: payload.callerID
+                    const peerObj = {
+                        peer,
+                        peerID: payload.callerID
+                    }
+
+                    setPeers(users => [...users, peerObj]);
                 }
-
-                setPeers(users => [...users, peerObj]);
             });
 
             socketRef.current.on("receiving returned signal", payload => {
@@ -305,6 +310,13 @@ const Room = (props) => {
         setText('');
     }
 
+    function onKeyUpMsg(e) {
+        if (e.charCode === 13) {
+            socketRef.current.emit("sending msg", { senderID: socketRef.current.id, text });
+            setText('');
+        }
+    }
+
     return (
         <Container>
             <PopupContainer showPopup={showPopup} />
@@ -325,13 +337,13 @@ const Room = (props) => {
             </VideoContainer>
             <MessageContainer>
                 <div className="messages">
-                    {messages.map((message) => {
+                    {messages.map((message, index) => {
                         var myMsg = message.senderID === socketRef.current.id ? true : false
-                        return  <Message message={message} names={names} myMsg={myMsg}/>
+                        return  <Message key={index} message={message} names={names} myMsg={myMsg}/>
                     })}
                 </div>
                 <div className="sendBox">
-                    <MessageBox value={text} onChange={handleChange} />
+                    <MessageBox value={text} onChange={handleChange} onKeyPress={onKeyUpMsg}/>
                     <Send size="24" onClick={sendMessage}/>
                 </div>
             </MessageContainer>
