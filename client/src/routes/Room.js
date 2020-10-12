@@ -6,6 +6,7 @@ import RecordRTC from "recordrtc";
 import download from "downloadjs";
 import {Send, Mic, MicOff, Videocam, VideocamOff, CallEnd, FiberManualRecord, Stop} from '@styled-icons/material/';
 import Message from "./Message";
+import Avatar from 'react-avatar';
 
 const Container = styled.div`
     display: flex;
@@ -19,6 +20,7 @@ const Popup = styled.div`
     display: ${props => props.displayPopup};
     .popup-content {
         position: absolute;
+        border-radius: 10px;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
@@ -38,17 +40,33 @@ const VideoContainer = styled.div`
     margin: 0;
     gap: 10px;
     width: 70%;
+    .sb-avatar__text {
+        border-radius: 20px;
+    }
 `;
 
 const StyledVideo = styled.video`
     height: 100%;
     width: 100%;
     object-fit: cover;
+    border-radius: 20px;
+`;
+
+const Video = styled.div`
+    position: relative;
+    .mic {
+        position: absolute;
+        bottom: 5px;
+        right: 5px;
+        background: rgba(255,255,255,0.5);
+        border-radius: 10px;
+        padding: 4px;
+    }
 `;
 
 const Controls = styled.div`
     position: absolute;
-    bottom: 5px;
+    bottom: 10px;
     left: 20%;
     & > svg {
         margin: 5px 10px;
@@ -56,11 +74,14 @@ const Controls = styled.div`
 `;
 
 const MessageContainer = styled.div`
-    padding: 20px;
+    margin: 20px;
+    border-radius: 20px;
     width: 30%;
+    background: #ffffff;
     .messages {
+        padding: 10px;
         overflow-y: scroll;
-        height: calc(100vh - 60px);
+        height: calc(100vh - 95px);
     }
     .sendBox {
         display: flex;
@@ -75,13 +96,49 @@ const MessageContainer = styled.div`
 const MessageBox = styled.textarea`
     height: 30%;
     width: 100%;
-    margin-left: 10px;
+    border: none;
+    border-radius: 10px;
+    margin-right: 10px;
 `;
 
-const Video = (props) => {
+const MyVideo = styled.div`
+    height: 100%;
+    width: 100%;
+    position: relative;
+    .sb-avatar__text {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+    .avatar-off {
+        display: none;
+    }
+`;
+
+const MyVideoContainer = (props) => {
+    const avatarClassName = props.isCameraOff ? '' : 'avatar-off'
+    return (
+        <MyVideo>
+            <StyledVideo muted ref={props.userVideo} autoPlay playsInline />
+            <Avatar className={avatarClassName} name={props.myName} size="100%" />
+        </MyVideo>
+    );
+}
+
+const PeerMic = (props) => {
+    if (props.mic){
+        return <MicOff className='mic' size="30" />
+    } else {
+        return <Mic className='mic' size="30" />
+    }
+}
+
+const PeerVideo = (props) => {
     const ref = useRef();
     const name = props.names.find(name => name.peerID === props.peer.peerID)
     const peerName = name ? name.name : 'anonymous';
+    const camera = props.peerCameras[props.peer.peerID]
+    const mic = props.peerMics[props.peer.peerID]
 
     useEffect(() => {
         props.peer.peer.on("stream", stream => {
@@ -89,12 +146,23 @@ const Video = (props) => {
         })
     }, []);
 
-    return (
-        <div>
-            <StyledVideo playsInline autoPlay ref={ref} />
-            <div>{peerName}</div>
-        </div>
-    );
+    if (camera){
+        return (
+            <Video>
+                <Avatar name={peerName} size="100%" ref={ref}/>
+                <PeerMic mic={mic} />
+                <div>{peerName}</div>
+            </Video>
+        );
+    } else {
+        return (
+            <Video>
+                <StyledVideo playsInline autoPlay ref={ref} />
+                <PeerMic mic={mic} />
+                <div>{peerName}</div>
+            </Video>
+        );
+    }
 }
 
 const videoConstraints = {
@@ -113,6 +181,8 @@ const Room = (props) => {
     const [recorder, setRecorder] = useState();
     const [text, setText] = useState("");
     const [messages, setMessages] = useState([]);
+    const [peerCameras, setPeerCameras] = useState({});
+    const [peerMics, setPeerMics] = useState({});
     const socketRef = useRef();
     const userVideo = useRef();
     const peersRef = useRef([]);
@@ -188,6 +258,16 @@ const Room = (props) => {
                 console.log('receiving names', payload)
                 setNames(payload)
             });
+
+            socketRef.current.on('receiving camera off', payload => {
+                console.log('receiving camera off', payload)
+                setPeerCameras(payload)
+            })
+
+            socketRef.current.on('receiving mic mute', payload => {
+                console.log('receiving mic mute', payload)
+                setPeerMics(payload)
+            })
         })
 
     }, []);
@@ -228,12 +308,13 @@ const Room = (props) => {
     function muteToggle() {
         userVideo.current.srcObject.getAudioTracks()[0].enabled = isMute;
         setMute(!isMute)
+        socketRef.current.emit("mic mute", { senderID: socketRef.current.id, micMute: !isMute });
     }
 
     const MicControl = (props) => {
         if(props.isMute) {
             return <MicOff size="24" onClick={muteToggle} />
-        }else{
+        } else {
             return <Mic size="24" onClick={muteToggle} />
         }
     }
@@ -241,12 +322,13 @@ const Room = (props) => {
     function cameraToggle() {
         userVideo.current.srcObject.getVideoTracks()[0].enabled = isCameraOff;
         setCameraOff(!isCameraOff)
+        socketRef.current.emit("camera off", { senderID: socketRef.current.id, cameraOff: !isCameraOff });
     }
 
     const CameraControl = (props) => {
         if(props.isCameraOff) {
             return <VideocamOff size="24" onClick={cameraToggle} />
-        }else{
+        } else {
             return <Videocam size="24" onClick={cameraToggle} />
         }
     }
@@ -322,11 +404,11 @@ const Room = (props) => {
             <PopupContainer showPopup={showPopup} />
             <VideoContainer>
                 <div>
-                    <StyledVideo muted ref={userVideo} autoPlay playsInline />
+                    <MyVideoContainer isCameraOff={isCameraOff} myName={myName} userVideo={userVideo}/>
                     <div>{myName}</div>
                 </div>
                 {peers.map((peer) => {
-                    return <Video key={peer.peerID} peer={peer} names={names} />
+                    return <PeerVideo key={peer.peerID} peer={peer} names={names} peerCameras={peerCameras} peerMics={peerMics} />
                 })}
                 <Controls>
                     <MicControl isMute={isMute} />

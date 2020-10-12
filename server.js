@@ -10,6 +10,8 @@ const path = require('path');
 let users = {};
 let socketToRoom = {};
 let socketToName = [];
+let socketToCamera = {};
+let socketToMic = {};
 
 io.on('connection', socket => {
     socket.on("join room", roomID => {
@@ -28,6 +30,8 @@ io.on('connection', socket => {
         const usersInThisRoom = users[roomID].filter(id => id !== socket.id);
 
         socket.emit("all users", usersInThisRoom);
+        io.emit('receiving camera off', socketToCamera);
+        io.emit('receiving mic mute', socketToMic);
     });
 
     socket.on("sending signal", payload => {
@@ -48,6 +52,16 @@ io.on('connection', socket => {
     socket.on("set myname", payload => {
         socketToName.push({peerID: payload.senderID, name: payload.name})
         io.emit('receiving names', socketToName);
+    });
+
+    socket.on("camera off", payload => {
+        socketToCamera[socket.id] = payload.cameraOff
+        io.emit('receiving camera off', socketToCamera);
+    });
+
+    socket.on("mic mute", payload => {
+        socketToMic[socket.id] = payload.micMute
+        io.emit('receiving mic mute', socketToMic);
     });
 
     socket.on('hangup', socketId => {
@@ -72,8 +86,6 @@ io.on('connection', socket => {
     });
 
 });
-
-//server.listen(process.env.PORT || 8000, () => console.log('server is running on port 8000'));
 
 if (process.env.PROD) {
     app.use(express.static(path.join(__dirname, './client/build')));
