@@ -64,6 +64,10 @@ io.on('connection', socket => {
         io.emit('receiving mic mute', socketToMic);
     });
 
+    socket.on("change recording status", payload => {
+        io.emit('receiving recording status', payload);
+    })
+
     socket.on('hangup', socketId => {
         console.log('hangup')
         const roomID = socketToRoom[socketId];

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import io from "socket.io-client";
 import Peer from "simple-peer";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import RecordRTC from "recordrtc";
 import download from "downloadjs";
 import {Send, Mic, MicOff, Videocam, VideocamOff, CallEnd, FiberManualRecord, Stop} from '@styled-icons/material/';
@@ -31,9 +31,34 @@ const Popup = styled.div`
     }
 `;
 
+const recordBlinking = keyframes`
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+`
+
+const Recording = styled.div`
+    position: absolute;
+    left: 35px;
+    top: 10px;
+    .record-mark {
+        height: 15px;
+        width: 15px;
+        border-radius: 50%;
+        background: red;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    span {
+        vertical-align: middle;
+    }
+    animation-name: ${recordBlinking};
+    animation-duration: 4s;
+    animation-iteration-count: infinite;
+`;
 
 const VideoContainer = styled.div`
-    padding: 20px;
+    padding: 35px;
     display: grid;
     grid-template-columns: repeat(auto-fill, 300px);
     grid-auto-rows: 300px;
@@ -54,6 +79,11 @@ const StyledVideo = styled.video`
 
 const Video = styled.div`
     position: relative;
+    .sb-avatar {
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
     .mic {
         position: absolute;
         bottom: 5px;
@@ -110,17 +140,13 @@ const MyVideo = styled.div`
         top: 0;
         left: 0;
     }
-    .avatar-off {
-        display: none;
-    }
 `;
 
 const MyVideoContainer = (props) => {
-    const avatarClassName = props.isCameraOff ? '' : 'avatar-off'
     return (
         <MyVideo>
             <StyledVideo muted ref={props.userVideo} autoPlay playsInline />
-            <Avatar className={avatarClassName} name={props.myName} size="100%" />
+            { props.isCameraOff && <Avatar name={props.myName} size="100%" /> }
         </MyVideo>
     );
 }
@@ -146,23 +172,14 @@ const PeerVideo = (props) => {
         })
     }, []);
 
-    if (camera){
-        return (
-            <Video>
-                <Avatar name={peerName} size="100%" ref={ref}/>
-                <PeerMic mic={mic} />
-                <div>{peerName}</div>
-            </Video>
-        );
-    } else {
-        return (
-            <Video>
-                <StyledVideo playsInline autoPlay ref={ref} />
-                <PeerMic mic={mic} />
-                <div>{peerName}</div>
-            </Video>
-        );
-    }
+    return (
+        <Video>
+            <StyledVideo playsInline autoPlay ref={ref} />
+            { camera && <Avatar name={peerName} size="100%" /> }
+            <PeerMic mic={mic} />
+            <div>{peerName}</div>
+        </Video>
+    );
 }
 
 const videoConstraints = {
@@ -268,6 +285,11 @@ const Room = (props) => {
                 console.log('receiving mic mute', payload)
                 setPeerMics(payload)
             })
+
+            socketRef.current.on('receiving recording status', payload => {
+                console.log('receiving recording status', payload)
+                setRecording(payload.recording)
+            })
         })
 
     }, []);
@@ -339,7 +361,7 @@ const Room = (props) => {
             recorder.startRecording();
             setRecorder(recorder)
         });
-        setRecording(!isRecording)
+        socketRef.current.emit("change recording status", { recording: !isRecording} );
     }
 
     function stopRecording() {
@@ -347,7 +369,7 @@ const Room = (props) => {
             let blob = recorder.getBlob();
             download(blob, `${roomID}.mp4`, 'video/webm')
         })
-        setRecording(!isRecording)
+        socketRef.current.emit("change recording status", { recording: !isRecording} );
     }
 
     const RecordControl = (props) => {
@@ -402,6 +424,12 @@ const Room = (props) => {
     return (
         <Container>
             <PopupContainer showPopup={showPopup} />
+            { isRecording &&
+                <Recording>
+                    <span className="record-mark"></span>
+                    <span>Recording</span>
+                </Recording>
+            }
             <VideoContainer>
                 <div>
                     <MyVideoContainer isCameraOff={isCameraOff} myName={myName} userVideo={userVideo}/>
