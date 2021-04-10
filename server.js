@@ -72,6 +72,7 @@ io.on('connection', socket => {
         console.log('hangup')
         const roomID = socketToRoom[socketId];
         let room = users[roomID];
+        socketToName = socketToName.filter((item) => item.peerID !== socketId)
         if (room) {
             room = room.filter(id => id !== socketId);
             users[roomID] = room;
@@ -81,6 +82,7 @@ io.on('connection', socket => {
 
     socket.on('disconnect', () => {
         const roomID = socketToRoom[socket.id];
+        socketToName = socketToName.filter((item) => item.peerID !== socket.id)
         let room = users[roomID];
         if (room) {
             room = room.filter(id => id !== socket.id);

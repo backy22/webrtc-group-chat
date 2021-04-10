@@ -189,10 +189,9 @@ const videoConstraints = {
 
 const Room = (props) => {
     const [peers, setPeers] = useState([]);
-    const [myName, setMyName] = useState("");
+    //const [myName, setMyName] = useState("");
     const [names, setNames] = useState([]);
     const [isMute, setMute] = useState(false);
-    const [showPopup, setPopup] = useState(true);
     const [isRecording, setRecording] = useState(false);
     const [isCameraOff, setCameraOff] = useState(false);
     const [recorder, setRecorder] = useState();
@@ -204,6 +203,8 @@ const Room = (props) => {
     const userVideo = useRef();
     const peersRef = useRef([]);
     const roomID = props.match.params.roomID;
+    const Location = props.location.state
+    const [myName, setMyName] = useState(Location.displayName)
 
     useEffect(() => {
         socketRef.current = io.connect("/");
@@ -211,6 +212,8 @@ const Room = (props) => {
         navigator.mediaDevices.getUserMedia({ video: videoConstraints, audio: true }).then(stream => {
             userVideo.current.srcObject = stream;
             socketRef.current.emit("join room", roomID);
+
+            socketRef.current.emit("set myname", { senderID: socketRef.current.id, name: myName })
 
             socketRef.current.on("all users", users => {
                 console.log('all users')
@@ -230,7 +233,7 @@ const Room = (props) => {
                 setPeers(peers);
             })
 
-            socketRef.current.on("user joined", payload => {
+            socketRef.current.once("user joined", payload => {
                 console.log('user joined', payload)
                 const samePeer = peersRef.current.find(p => p.peerID === payload.callerID)
 
@@ -246,7 +249,8 @@ const Room = (props) => {
                         peerID: payload.callerID
                     }
 
-                    setPeers(users => [...users, peerObj]);
+                    let newArr = [...peers, peerObj]
+                    setPeers(newArr);
                 }
             });
 
@@ -385,26 +389,6 @@ const Room = (props) => {
         props.history.push('/');
     }
 
-    function onKeyUpMyName(e) {
-        if (e.charCode === 13) {
-            socketRef.current.emit("set myname", { senderID: socketRef.current.id, name: e.target.value })
-            setMyName(e.target.value);
-            setPopup(false)
-        }
-    }
-
-    const PopupContainer = (props) => {
-        let displayPopup = props.showPopup ? 'block' : 'none'
-            return (
-                <Popup displayPopup={displayPopup}>
-                    <div className="popup-content">
-                        <h4>Put your name</h4>
-                        <input onKeyPress={onKeyUpMyName}></input>
-                    </div>
-                </Popup>
-            )
-    }
-
     function handleChange(e) {
         setText(e.target.value);
     }
@@ -423,7 +407,6 @@ const Room = (props) => {
 
     return (
         <Container>
-            <PopupContainer showPopup={showPopup} />
             { isRecording &&
                 <Recording>
                     <span className="record-mark"></span>
