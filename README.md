@@ -4,4 +4,4 @@
 ```yarn start```
 
 # live demo
-https://damp-shore-15076.herokuapp.com/
+https://webrtc-group-chat-15076.herokuapp.com/
