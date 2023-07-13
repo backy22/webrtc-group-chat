@@ -361,7 +361,7 @@ const Room = (props) => {
 
     function startRecording() {
         navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }).then(stream => {
-            let recorder = RecordRTC(stream, { type: 'video/webm' })
+            let recorder = RecordRTC(stream, { type: 'video', mimeType: 'video/webm' })
             recorder.startRecording();
             setRecorder(recorder)
         });
