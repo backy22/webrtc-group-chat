@@ -18,10 +18,10 @@ yarn start
 
 ## function
 
--video chat
--audio/camera mute
--real time text chat
--recording (you can play in on VLC player)
+- video chat
+- audio/camera mute
+- real time text chat
+- recording (you can play in on VLC player)
 
 ## demo
 https://webrtc-group-chat-09u6.onrender.com/
