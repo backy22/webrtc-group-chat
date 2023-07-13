@@ -18,6 +18,7 @@
   },
   "scripts": {
     "start": "PROD=true node server.js",
+    "build": "cd ./client && yarn && yarn build",
     "postinstall": "cd ./client && yarn"
   },
   "devDependencies": {
